@@ -1,0 +1,5 @@
+{
+    "dev": {
+        "CERT_FILE": "config/keys/X509-cert-556008399212355269.pem"
+    }
+}
