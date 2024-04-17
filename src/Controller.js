@@ -1,7 +1,10 @@
-const Area = require("./AreaModel");
-const ParkingLot = require("./ParkingLotModel");
+const Area = require("./models/AreaModel");
+const ParkingLot = require("./models/ParkingLotModel");
+const Layer = require("./models/LayerModel");
+const Box = require("./models/BoxModel");
+const Flow = require("./models/FlowModel");
 
-const getParkingLots = async (req, res) => {
+const fetchParkingLots = async (req, res) => {
     try {
         const lots = (await ParkingLot.find({})) ?? [];
 
@@ -12,7 +15,7 @@ const getParkingLots = async (req, res) => {
     }
 };
 
-const getAreasByLot = async (req, res) => {
+const fetchAreasByLot = async (req, res) => {
     const { lotId } = req.body;
 
     try {
@@ -25,33 +28,87 @@ const getAreasByLot = async (req, res) => {
     }
 };
 
-const updateBox = async (req, res) => {
-    const { areaId, layer, boxId, newStatus = 0 } = req.body;
-
-    /*need to get dates to calculate
-        - hourCount
-        - hourOccupied [
-            0
-            1
-            2
-            ...
-            12
-            13
-            14
-            ...
-        ]
-    */
+const fetchLayersByArea = async (req, res) => {
+    const { areaId } = req.body;
 
     try {
-        await Area.updateOne(
-            { _id: areaId },
+        const layers = (await Layer.find({ areaId })) ?? [];
+
+        return res.status(200).json({ success: true, data: layers });
+    } catch (err) {
+        console.log(err);
+        return res.status(400).json({ success: false, error: err });
+    }
+};
+
+const fetchBoxesByLayer = async (req, res) => {
+    const { layerId } = req.body;
+
+    try {
+        const boxes = (await Box.find({ layerId })) ?? [];
+
+        return res.status(200).json({ success: true, data: boxes });
+    } catch (err) {
+        console.log(err);
+        return res.status(400).json({ success: false, error: err });
+    }
+};
+
+const updateBox = async (req, res) => {
+    const { layerId, boxId } = req.body;
+
+    if (!boxId) {
+        return res.status(400).json({
+            success: false,
+            error: "Missing data for update.",
+        });
+    }
+
+    const flowEntry = await Flow.findOne({ boxId });
+    let hours = 0;
+
+    if (flowEntry) {
+        let totalSeconds = Math.floor(
+            (new Date() - flowEntry.entryDate) / 1000
+        );
+
+        hours = totalSeconds / (60 * 60);
+
+        await Flow.deleteOne({ boxId: flowEntry.boxId });
+    }
+
+    try {
+        await Box.updateOne(
+            {
+                _id: boxId,
+            },
             {
                 $set: {
-                    "boxLayout.$[bL].boxMap.$[bM].available": newStatus,
+                    available: !!flowEntry,
                 },
-            },
-            { arrayFilters: [{ "bL.layer": layer }, { "bM._id": boxId }] }
+                $inc: {
+                    totalHours: hours,
+                },
+            }
         );
+
+        await Layer.updateOne(
+            {
+                _id: layerId,
+            },
+            {
+                $inc: {
+                    totalHours: hours,
+                },
+            }
+        );
+
+        if (!flowEntry) {
+            await Flow.create({
+                boxId,
+                entryDate: new Date(),
+            });
+        }
 
         return res
             .status(200)
@@ -63,7 +120,6 @@ const updateBox = async (req, res) => {
     }
 };
 
-//create parking lot
 const createParkingLot = (req, res) => {
     const body = req.body;
 
@@ -95,13 +151,108 @@ const createParkingLot = (req, res) => {
         });
 };
 
-//create area
-//create layer
-//create box
+const createArea = (req, res) => {
+    const body = req.body;
+
+    if (!body) {
+        return res.status(400).json({
+            success: false,
+            error: "You must provide an area.",
+        });
+    }
+
+    const area = new Area(body);
+
+    if (!area) {
+        return res.status(400).json({ success: false, error: err });
+    }
+
+    area.save()
+        .then(() => {
+            return res.status(201).json({
+                success: true,
+                message: "Area created!",
+            });
+        })
+        .catch((error) => {
+            return res.status(400).json({
+                error,
+                message: "Area couldnt be created!",
+            });
+        });
+};
+
+const createLayer = (req, res) => {
+    const body = req.body;
+
+    if (!body) {
+        return res.status(400).json({
+            success: false,
+            error: "You must provide a layer.",
+        });
+    }
+
+    const layer = new Layer(body);
+
+    if (!layer) {
+        return res.status(400).json({ success: false, error: err });
+    }
+
+    layer
+        .save()
+        .then(() => {
+            return res.status(201).json({
+                success: true,
+                message: "Layer created!",
+            });
+        })
+        .catch((error) => {
+            return res.status(400).json({
+                error,
+                message: "Layer couldnt be created!",
+            });
+        });
+};
+
+const createBox = (req, res) => {
+    const body = req.body;
+
+    if (!body) {
+        return res.status(400).json({
+            success: false,
+            error: "You must provide a box.",
+        });
+    }
+
+    const box = new Box(body);
+
+    if (!box) {
+        return res.status(400).json({ success: false, error: err });
+    }
+
+    box.save()
+        .then(() => {
+            return res.status(201).json({
+                success: true,
+                message: "Box created!",
+            });
+        })
+        .catch((error) => {
+            return res.status(400).json({
+                error,
+                message: "Box couldnt be created!",
+            });
+        });
+};
 
 module.exports = {
     updateBox,
-    getParkingLots,
-    getAreasByLot,
+    fetchParkingLots,
+    fetchAreasByLot,
+    fetchLayersByArea,
+    fetchBoxesByLayer,
     createParkingLot,
+    createArea,
+    createLayer,
+    createBox,
 };
