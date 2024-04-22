@@ -1,6 +1,5 @@
 const Area = require("./models/AreaModel");
 const ParkingLot = require("./models/ParkingLotModel");
-const Layer = require("./models/LayerModel");
 const Box = require("./models/BoxModel");
 const Flow = require("./models/FlowModel");
 
@@ -16,7 +15,7 @@ const fetchParkingLots = async (req, res) => {
 };
 
 const fetchAreasByLot = async (req, res) => {
-    const { lotId } = req.body;
+    const { lotId } = req.params;
 
     try {
         const areas = (await Area.find({ lotId })) ?? [];
@@ -28,24 +27,11 @@ const fetchAreasByLot = async (req, res) => {
     }
 };
 
-const fetchLayersByArea = async (req, res) => {
-    const { areaId } = req.body;
+const fetchBoxesByArea = async (req, res) => {
+    const { areaId } = req.params;
 
     try {
-        const layers = (await Layer.find({ areaId })) ?? [];
-
-        return res.status(200).json({ success: true, data: layers });
-    } catch (err) {
-        console.log(err);
-        return res.status(400).json({ success: false, error: err });
-    }
-};
-
-const fetchBoxesByLayer = async (req, res) => {
-    const { layerId } = req.body;
-
-    try {
-        const boxes = (await Box.find({ layerId })) ?? [];
+        const boxes = (await Box.find({ areaId })) ?? [];
 
         return res.status(200).json({ success: true, data: boxes });
     } catch (err) {
@@ -55,9 +41,9 @@ const fetchBoxesByLayer = async (req, res) => {
 };
 
 const updateBox = async (req, res) => {
-    const { layerId, boxId } = req.body;
+    const { areaId, boxId } = req.body;
 
-    if (!boxId) {
+    if (!areaId || !boxId) {
         return res.status(400).json({
             success: false,
             error: "Missing data for update.",
@@ -92,9 +78,9 @@ const updateBox = async (req, res) => {
             }
         );
 
-        await Layer.updateOne(
+        await Area.updateOne(
             {
-                _id: layerId,
+                _id: areaId,
             },
             {
                 $inc: {
@@ -249,8 +235,7 @@ module.exports = {
     updateBox,
     fetchParkingLots,
     fetchAreasByLot,
-    fetchLayersByArea,
-    fetchBoxesByLayer,
+    fetchBoxesByArea,
     createParkingLot,
     createArea,
     createLayer,
