@@ -9,6 +9,7 @@ const socketio = require("socket.io");
 
 //env
 const PORT = process.env.PORT;
+const SOCKETPORT = process.env.SOCKETPORT;
 
 //express
 const app = express();
@@ -19,7 +20,7 @@ app.use(express.json());
 //socketio
 const server = http.Server(app);
 const io = socketio(server);
-server.listen(80);
+server.listen(SOCKETPORT);
 io.sockets.on("connection", function (socket) {
     socket.on("joinArea", function (room) {
         socket.join(room);
