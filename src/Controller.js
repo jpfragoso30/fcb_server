@@ -52,11 +52,14 @@ const updateBox = async (req, res) => {
 
     const flowEntry = await Flow.findOne({ boxId });
     let hours = 0;
+    let updateCounter = 1;
 
     if (flowEntry) {
         let totalSeconds = Math.floor(
             (new Date() - flowEntry.entryDate) / 1000
         );
+
+        updateCounter = -1;
 
         hours = totalSeconds / (60 * 60);
 
@@ -85,6 +88,8 @@ const updateBox = async (req, res) => {
             {
                 $inc: {
                     totalHours: hours,
+                    nOccupied: updateCounter,
+                    nAvailable: updateCounter * -1,
                 },
             }
         );
@@ -95,6 +100,15 @@ const updateBox = async (req, res) => {
                 entryDate: new Date(),
             });
         }
+
+        const updatedBoxes = await Box.find({ areaId });
+
+        const updatingArea = await Area.findOne({ _id: areaId });
+
+        const updatedAreas = await Area.find({ lotId: updatingArea.lotId });
+
+        req.io.to(areaId).emit("data", updatedBoxes);
+        req.io.to(updatingArea.lotId).emit("data", updatedAreas);
 
         return res
             .status(200)

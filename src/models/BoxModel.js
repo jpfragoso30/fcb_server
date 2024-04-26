@@ -14,6 +14,7 @@ const Box = new Schema({
     totalHours: { type: Number, required: true, default: 0 },
     available: { type: Boolean, required: true, default: true },
     coords: { type: Coords2D, required: true },
+    referenceId: { type: String, required: true },
 });
 
 module.exports = mongoose.model("boxes", Box);
