@@ -25,4 +25,4 @@ npm start
 
 4. Exposed ports from the server:
 - PORT: RESTful API
-- 80: Socket Communication
+- SOCKETPORT: Socket Communication
